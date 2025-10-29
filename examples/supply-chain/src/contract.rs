@@ -93,6 +93,58 @@ impl Contract for SupplyChainContract {
                     self.remote_claim_product(source_account, token_id, target_account)
                 }
             }
+
+            Operation::UpdateStatus {
+                token_id,
+                new_status,
+                location,
+                notes,
+            } => {
+                let mut product = self.get_product(&token_id).await;
+                self.runtime
+                    .check_account_permission(product.owner)
+                    .expect("Permission for UpdateStatus operation");
+
+                self.update_product_status(&mut product, new_status, location, notes).await;
+            }
+
+            Operation::AddCheckpoint {
+                token_id,
+                location,
+                status,
+                notes,
+            } => {
+                let mut product = self.get_product(&token_id).await;
+                self.runtime
+                    .check_account_permission(product.owner)
+                    .expect("Permission for AddCheckpoint operation");
+
+                self.add_checkpoint(&mut product, location, status, notes).await;
+            }
+
+            Operation::VerifyProduct {
+                token_id,
+                passed,
+                details,
+            } => {
+                let mut product = self.get_product(&token_id).await;
+                // Note: Verification can be done by anyone with permission (e.g., inspectors)
+                // Could add a verifier role check here if needed
+
+                self.verify_product(&mut product, passed, details).await;
+            }
+
+            Operation::RejectProduct {
+                token_id,
+                reason,
+            } => {
+                let mut product = self.get_product(&token_id).await;
+                self.runtime
+                    .check_account_permission(product.owner)
+                    .expect("Permission for RejectProduct operation");
+
+                self.reject_product(&mut product, reason).await;
+            }
         }
     }
 
@@ -102,12 +154,25 @@ impl Contract for SupplyChainContract {
                 mut product,
                 target_account,
             } => {
+                use supply_chain::{Checkpoint, ProductStatus};
+
                 let is_bouncing = self
                     .runtime
                     .message_is_bouncing()
                     .expect("Message delivery status has to be available when executing a message");
                 if !is_bouncing {
                     product.owner = target_account.owner;
+
+                    // Add delivery checkpoint for cross-chain transfer
+                    let delivery_checkpoint = Checkpoint {
+                        timestamp: self.runtime.system_time(),
+                        location: format!("Chain {}", self.runtime.chain_id()),
+                        status: ProductStatus::Delivered,
+                        party: target_account.owner,
+                        notes: Some("Delivered (cross-chain)".to_string()),
+                    };
+                    product.checkpoints.push(delivery_checkpoint);
+                    product.status = ProductStatus::Delivered;
                 }
 
                 self.add_product(product).await;
@@ -138,9 +203,35 @@ impl SupplyChainContract {
     /// Transfers custody of the specified product to another account (possibly across chains).
     /// Authentication needs to have happened already.
     async fn transfer_custody(&mut self, mut product: Product, target_account: Account) {
+        use supply_chain::{Checkpoint, ProductStatus};
+
         self.remove_product(&product).await;
+
+        // Add checkpoint for custody transfer
+        let transfer_checkpoint = Checkpoint {
+            timestamp: self.runtime.system_time(),
+            location: format!("Chain {}", self.runtime.chain_id()),
+            status: ProductStatus::InTransit,
+            party: product.owner,
+            notes: Some(format!("Transfer to {}", target_account.owner)),
+        };
+        product.checkpoints.push(transfer_checkpoint);
+        product.status = ProductStatus::InTransit;
+
         if target_account.chain_id == self.runtime.chain_id() {
             product.owner = target_account.owner;
+
+            // Add delivery checkpoint for same-chain transfer
+            let delivery_checkpoint = Checkpoint {
+                timestamp: self.runtime.system_time(),
+                location: format!("Chain {}", self.runtime.chain_id()),
+                status: ProductStatus::Delivered,
+                party: target_account.owner,
+                notes: Some("Delivered (same chain)".to_string()),
+            };
+            product.checkpoints.push(delivery_checkpoint);
+            product.status = ProductStatus::Delivered;
+
             self.add_product(product).await;
         } else {
             let message = Message::TransferCustody {
@@ -165,6 +256,8 @@ impl SupplyChainContract {
     }
 
     async fn register_product(&mut self, owner: AccountOwner, name: String, blob_hash: DataBlobHash) {
+        use supply_chain::{Checkpoint, ProductStatus};
+
         self.runtime.assert_data_blob_exists(blob_hash);
         let token_id = Product::create_token_id(
             &self.runtime.chain_id(),
@@ -176,12 +269,24 @@ impl SupplyChainContract {
         )
         .expect("Failed to serialize product metadata");
 
+        // Create initial checkpoint for registration
+        let initial_checkpoint = Checkpoint {
+            timestamp: self.runtime.system_time(),
+            location: format!("Chain {}", self.runtime.chain_id()),
+            status: ProductStatus::Registered,
+            party: owner,
+            notes: Some("Product registered".to_string()),
+        };
+
         self.add_product(Product {
             token_id,
             owner,
             name,
             manufacturer: owner,
             blob_hash,
+            status: ProductStatus::Registered,
+            checkpoints: vec![initial_checkpoint],
+            verifications: vec![],
         })
         .await;
 
@@ -246,5 +351,128 @@ impl SupplyChainContract {
             .expect("Product set should be there!");
 
         owned_token_ids.remove(&product.token_id);
+    }
+
+    /// Updates product status and adds a checkpoint
+    async fn update_product_status(
+        &mut self,
+        product: &mut Product,
+        new_status: supply_chain::ProductStatus,
+        location: String,
+        notes: Option<String>,
+    ) {
+        use supply_chain::Checkpoint;
+
+        product.status = new_status;
+
+        let checkpoint = Checkpoint {
+            timestamp: self.runtime.system_time(),
+            location,
+            status: new_status,
+            party: product.owner,
+            notes,
+        };
+        product.checkpoints.push(checkpoint);
+
+        // Update the product in storage
+        self.state
+            .products
+            .insert(&product.token_id, product.clone())
+            .expect("Error updating product");
+    }
+
+    /// Adds a checkpoint to track product location/status
+    async fn add_checkpoint(
+        &mut self,
+        product: &mut Product,
+        location: String,
+        status: supply_chain::ProductStatus,
+        notes: Option<String>,
+    ) {
+        use supply_chain::Checkpoint;
+
+        let checkpoint = Checkpoint {
+            timestamp: self.runtime.system_time(),
+            location,
+            status,
+            party: product.owner,
+            notes,
+        };
+        product.checkpoints.push(checkpoint);
+        product.status = status;
+
+        // Update the product in storage
+        self.state
+            .products
+            .insert(&product.token_id, product.clone())
+            .expect("Error updating product");
+    }
+
+    /// Records a product verification
+    async fn verify_product(&mut self, product: &mut Product, passed: bool, details: String) {
+        use supply_chain::{ProductStatus, VerificationRecord};
+
+        let verification = VerificationRecord {
+            verifier: product.owner, // In a real system, this might be a separate verifier role
+            timestamp: self.runtime.system_time(),
+            passed,
+            details: details.clone(),
+        };
+        product.verifications.push(verification);
+
+        // Update status based on verification result
+        if passed {
+            product.status = ProductStatus::Verified;
+
+            // Add checkpoint for successful verification
+            let checkpoint = supply_chain::Checkpoint {
+                timestamp: self.runtime.system_time(),
+                location: format!("Chain {}", self.runtime.chain_id()),
+                status: ProductStatus::Verified,
+                party: product.owner,
+                notes: Some(format!("Verification passed: {}", details)),
+            };
+            product.checkpoints.push(checkpoint);
+        } else {
+            product.status = ProductStatus::Rejected;
+
+            // Add checkpoint for failed verification
+            let checkpoint = supply_chain::Checkpoint {
+                timestamp: self.runtime.system_time(),
+                location: format!("Chain {}", self.runtime.chain_id()),
+                status: ProductStatus::Rejected,
+                party: product.owner,
+                notes: Some(format!("Verification failed: {}", details)),
+            };
+            product.checkpoints.push(checkpoint);
+        }
+
+        // Update the product in storage
+        self.state
+            .products
+            .insert(&product.token_id, product.clone())
+            .expect("Error updating product");
+    }
+
+    /// Marks a product as rejected
+    async fn reject_product(&mut self, product: &mut Product, reason: String) {
+        use supply_chain::{Checkpoint, ProductStatus};
+
+        product.status = ProductStatus::Rejected;
+
+        let checkpoint = Checkpoint {
+            timestamp: self.runtime.system_time(),
+            location: format!("Chain {}", self.runtime.chain_id()),
+            status: ProductStatus::Rejected,
+            party: product.owner,
+            notes: Some(format!("Rejected: {}", reason)),
+        };
+        product.checkpoints.push(checkpoint);
+
+        // Update the product in storage
+        self.state
+            .products
+            .insert(&product.token_id, product.clone())
+            .expect("Error updating product");
     }
 }

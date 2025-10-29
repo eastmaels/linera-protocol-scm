@@ -5,16 +5,61 @@
 
 use std::fmt::{Display, Formatter};
 
-use async_graphql::{InputObject, Request, Response, SimpleObject};
+use async_graphql::{Enum, InputObject, Request, Response, SimpleObject};
 use fungible::Account;
 use linera_sdk::{
     graphql::GraphQLMutationRoot,
     linera_base_types::{
-        AccountOwner, ApplicationId, ChainId, ContractAbi, DataBlobHash, ServiceAbi,
+        AccountOwner, ApplicationId, ChainId, ContractAbi, DataBlobHash, ServiceAbi, Timestamp,
     },
     ToBcsBytes,
 };
 use serde::{Deserialize, Serialize};
+
+/// Product status in the supply chain
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Enum)]
+pub enum ProductStatus {
+    /// Product has been registered but not yet moved
+    Registered,
+    /// Product is currently in transit between locations
+    InTransit,
+    /// Product has been delivered to destination
+    Delivered,
+    /// Product has passed quality verification
+    Verified,
+    /// Product has failed verification or been rejected
+    Rejected,
+}
+
+/// A checkpoint records a status or location update for a product
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, SimpleObject)]
+#[serde(rename_all = "camelCase")]
+pub struct Checkpoint {
+    /// When this checkpoint was created
+    pub timestamp: Timestamp,
+    /// Location or facility name
+    pub location: String,
+    /// Product status at this checkpoint
+    pub status: ProductStatus,
+    /// Party who created this checkpoint
+    pub party: AccountOwner,
+    /// Optional notes or details
+    pub notes: Option<String>,
+}
+
+/// A verification record for quality assurance
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, SimpleObject)]
+#[serde(rename_all = "camelCase")]
+pub struct VerificationRecord {
+    /// Party who performed the verification
+    pub verifier: AccountOwner,
+    /// When the verification was performed
+    pub timestamp: Timestamp,
+    /// Whether the product passed verification
+    pub passed: bool,
+    /// Verification details or notes
+    pub details: String,
+}
 
 #[derive(
     Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Ord, PartialOrd, SimpleObject, InputObject,
@@ -58,6 +103,31 @@ pub enum Operation {
         token_id: TokenId,
         target_account: Account,
     },
+    /// Updates the status of a product and adds a checkpoint
+    UpdateStatus {
+        token_id: TokenId,
+        new_status: ProductStatus,
+        location: String,
+        notes: Option<String>,
+    },
+    /// Adds a checkpoint for tracking product location/status
+    AddCheckpoint {
+        token_id: TokenId,
+        location: String,
+        status: ProductStatus,
+        notes: Option<String>,
+    },
+    /// Verifies a product (quality check)
+    VerifyProduct {
+        token_id: TokenId,
+        passed: bool,
+        details: String,
+    },
+    /// Marks a product as rejected
+    RejectProduct {
+        token_id: TokenId,
+        reason: String,
+    },
 }
 
 /// A cross-chain message.
@@ -86,6 +156,12 @@ pub struct Product {
     pub name: String,
     pub manufacturer: AccountOwner,
     pub blob_hash: DataBlobHash,
+    /// Current status of the product
+    pub status: ProductStatus,
+    /// History of checkpoints (location and status updates)
+    pub checkpoints: Vec<Checkpoint>,
+    /// History of quality verifications
+    pub verifications: Vec<VerificationRecord>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, SimpleObject, PartialEq, Eq)]
@@ -96,6 +172,12 @@ pub struct ProductOutput {
     pub name: String,
     pub manufacturer: AccountOwner,
     pub payload: Vec<u8>,
+    /// Current product status
+    pub status: ProductStatus,
+    /// Checkpoint history
+    pub checkpoints: Vec<Checkpoint>,
+    /// Verification history
+    pub verifications: Vec<VerificationRecord>,
 }
 
 impl ProductOutput {
@@ -108,6 +190,9 @@ impl ProductOutput {
             name: product.name,
             manufacturer: product.manufacturer,
             payload,
+            status: product.status,
+            checkpoints: product.checkpoints,
+            verifications: product.verifications,
         }
     }
 
@@ -118,6 +203,9 @@ impl ProductOutput {
             name: product.name,
             manufacturer: product.manufacturer,
             payload,
+            status: product.status,
+            checkpoints: product.checkpoints,
+            verifications: product.verifications,
         }
     }
 }

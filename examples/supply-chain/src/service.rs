@@ -160,6 +160,56 @@ impl QueryRoot {
 
         result
     }
+
+    async fn products_by_status(
+        &self,
+        status: supply_chain::ProductStatus,
+    ) -> BTreeMap<String, ProductOutput> {
+        let mut result = BTreeMap::new();
+        self.supply_chain
+            .products
+            .for_each_index_value(|_token_id, product| {
+                let product = product.into_owned();
+                if product.status == status {
+                    let payload = self.runtime.read_data_blob(product.blob_hash);
+                    let product_output = ProductOutput::new(product, payload);
+                    result.insert(product_output.token_id.clone(), product_output);
+                }
+                Ok(())
+            })
+            .await
+            .unwrap();
+
+        result
+    }
+
+    async fn product_history(&self, token_id: String) -> Vec<supply_chain::Checkpoint> {
+        let token_id_vec = STANDARD_NO_PAD.decode(&token_id).unwrap();
+        let product = self
+            .supply_chain
+            .products
+            .get(&TokenId { id: token_id_vec })
+            .await
+            .unwrap();
+
+        product
+            .map(|p| p.checkpoints)
+            .unwrap_or_else(Vec::new)
+    }
+
+    async fn verification_records(&self, token_id: String) -> Vec<supply_chain::VerificationRecord> {
+        let token_id_vec = STANDARD_NO_PAD.decode(&token_id).unwrap();
+        let product = self
+            .supply_chain
+            .products
+            .get(&TokenId { id: token_id_vec })
+            .await
+            .unwrap();
+
+        product
+            .map(|p| p.verifications)
+            .unwrap_or_else(Vec::new)
+    }
 }
 
 struct MutationRoot {
@@ -207,6 +257,67 @@ impl MutationRoot {
                 id: STANDARD_NO_PAD.decode(token_id).unwrap(),
             },
             target_account,
+        };
+        self.runtime.schedule_operation(&operation);
+        []
+    }
+
+    async fn update_status(
+        &self,
+        token_id: String,
+        new_status: supply_chain::ProductStatus,
+        location: String,
+        notes: Option<String>,
+    ) -> [u8; 0] {
+        let operation = Operation::UpdateStatus {
+            token_id: TokenId {
+                id: STANDARD_NO_PAD.decode(token_id).unwrap(),
+            },
+            new_status,
+            location,
+            notes,
+        };
+        self.runtime.schedule_operation(&operation);
+        []
+    }
+
+    async fn add_checkpoint(
+        &self,
+        token_id: String,
+        location: String,
+        status: supply_chain::ProductStatus,
+        notes: Option<String>,
+    ) -> [u8; 0] {
+        let operation = Operation::AddCheckpoint {
+            token_id: TokenId {
+                id: STANDARD_NO_PAD.decode(token_id).unwrap(),
+            },
+            location,
+            status,
+            notes,
+        };
+        self.runtime.schedule_operation(&operation);
+        []
+    }
+
+    async fn verify_product(&self, token_id: String, passed: bool, details: String) -> [u8; 0] {
+        let operation = Operation::VerifyProduct {
+            token_id: TokenId {
+                id: STANDARD_NO_PAD.decode(token_id).unwrap(),
+            },
+            passed,
+            details,
+        };
+        self.runtime.schedule_operation(&operation);
+        []
+    }
+
+    async fn reject_product(&self, token_id: String, reason: String) -> [u8; 0] {
+        let operation = Operation::RejectProduct {
+            token_id: TokenId {
+                id: STANDARD_NO_PAD.decode(token_id).unwrap(),
+            },
+            reason,
         };
         self.runtime.schedule_operation(&operation);
         []
