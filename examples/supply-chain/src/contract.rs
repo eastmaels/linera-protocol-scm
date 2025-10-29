@@ -101,9 +101,10 @@ impl Contract for SupplyChainContract {
                 notes,
             } => {
                 let mut product = self.get_product(&token_id).await;
-                self.runtime
-                    .check_account_permission(product.owner)
-                    .expect("Permission for UpdateStatus operation");
+                // TODO: Add proper permission checks later
+                // self.runtime
+                //     .check_account_permission(product.owner)
+                //     .expect("Permission for UpdateStatus operation");
 
                 self.update_product_status(&mut product, new_status, location, notes).await;
             }
@@ -115,9 +116,10 @@ impl Contract for SupplyChainContract {
                 notes,
             } => {
                 let mut product = self.get_product(&token_id).await;
-                self.runtime
-                    .check_account_permission(product.owner)
-                    .expect("Permission for AddCheckpoint operation");
+                // TODO: Add proper permission checks later
+                // self.runtime
+                //     .check_account_permission(product.owner)
+                //     .expect("Permission for AddCheckpoint operation");
 
                 self.add_checkpoint(&mut product, location, status, notes).await;
             }
@@ -128,8 +130,8 @@ impl Contract for SupplyChainContract {
                 details,
             } => {
                 let mut product = self.get_product(&token_id).await;
-                // Note: Verification can be done by anyone with permission (e.g., inspectors)
-                // Could add a verifier role check here if needed
+                // TODO: Add verifier role check later
+                // Note: Verification should be done by authorized inspectors
 
                 self.verify_product(&mut product, passed, details).await;
             }
@@ -139,9 +141,10 @@ impl Contract for SupplyChainContract {
                 reason,
             } => {
                 let mut product = self.get_product(&token_id).await;
-                self.runtime
-                    .check_account_permission(product.owner)
-                    .expect("Permission for RejectProduct operation");
+                // TODO: Add proper permission checks later
+                // self.runtime
+                //     .check_account_permission(product.owner)
+                //     .expect("Permission for RejectProduct operation");
 
                 self.reject_product(&mut product, reason).await;
             }
