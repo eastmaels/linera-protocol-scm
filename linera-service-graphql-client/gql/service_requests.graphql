@@ -1,0 +1,613 @@
+query Chains {
+  chains {
+    list
+    default
+  }
+}
+
+query ChainOutbox($chainId: ChainId!, $target: ChainId!) {
+  chain(chainId: $chainId) {
+    outboxes {
+      entry(key: $target) {
+        key
+        value {
+          nextHeightToSchedule
+          queue {
+            entries
+          }
+        }
+      }
+    }
+  }
+}
+
+query ChainInbox($chainId: ChainId!, $origin: ChainId!) {
+  chain(chainId: $chainId) {
+    inboxes {
+      entry(key: $origin) {
+        key
+        value {
+          nextCursorToAdd {
+            height
+            index
+          }
+          nextCursorToRemove {
+            height
+            index
+          }
+          addedBundles {
+            entries {
+              height
+              timestamp
+              certificateHash
+              transactionIndex
+              messages {
+                authenticatedSigner
+                grant
+                refundGrantTo
+                kind
+                index
+                message
+                messageMetadata {
+                  messageType
+                  applicationId
+                  userBytesHex
+                  systemMessage {
+                    systemMessageType
+                    credit {
+                      target
+                      amount
+                      source
+                    }
+                    withdraw {
+                      owner
+                      amount
+                      recipient
+                    }
+                  }
+                }
+              }
+            }
+          }
+          removedBundles {
+            entries {
+              height
+              timestamp
+              certificateHash
+              transactionIndex
+              messages {
+                authenticatedSigner
+                grant
+                refundGrantTo
+                kind
+                index
+                message
+                messageMetadata {
+                  messageType
+                  applicationId
+                  userBytesHex
+                  systemMessage {
+                    systemMessageType
+                    credit {
+                      target
+                      amount
+                      source
+                    }
+                    withdraw {
+                      owner
+                      amount
+                      recipient
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+query Chain(
+  $chainId: ChainId!,
+  $inboxesInput: MapInput_ChainId_37f83aa9,
+  $outboxesInput: MapInput_ChainId_37f83aa9,
+  $previousMessageBlocksInput: MapInput_ChainId_37f83aa9,
+  $previousEventBlocksInput: MapInput_StreamIdInput_b7c3909d,
+) {
+  chain(chainId: $chainId) {
+    chainId
+    executionState {
+      system {
+        description
+        epoch
+        adminId
+        ownership
+        balance
+        timestamp
+      }
+    }
+    executionStateHash
+    tipState {
+      blockHash
+      nextBlockHeight
+    }
+    manager {
+      ownership
+      seed
+      lockingBlobs {
+        keys
+      }
+      roundTimeout
+      fallbackOwners
+      currentRound
+    }
+    confirmedLog {
+      entries
+    }
+    receivedLog {
+      entries {
+        chainId
+        height
+      }
+    }
+    inboxes {
+      keys
+      entries(input: $inboxesInput) {
+        key
+        value {
+          nextCursorToAdd {
+            height
+            index
+          }
+          nextCursorToRemove {
+            height
+            index
+          }
+          addedBundles {
+            entries {
+              height
+              timestamp
+              certificateHash
+              transactionIndex
+              messages {
+                authenticatedSigner
+                grant
+                refundGrantTo
+                kind
+                index
+                message
+                messageMetadata {
+                  messageType
+                  applicationId
+                  userBytesHex
+                  systemMessage {
+                    systemMessageType
+                    credit {
+                      target
+                      amount
+                      source
+                    }
+                    withdraw {
+                      owner
+                      amount
+                      recipient
+                    }
+                  }
+                }
+              }
+            }
+          }
+          removedBundles {
+            entries {
+              height
+              timestamp
+              certificateHash
+              transactionIndex
+              messages {
+                authenticatedSigner
+                grant
+                refundGrantTo
+                kind
+                index
+                message
+                messageMetadata {
+                  messageType
+                  applicationId
+                  userBytesHex
+                  systemMessage {
+                    systemMessageType
+                    credit {
+                      target
+                      amount
+                      source
+                    }
+                    withdraw {
+                      owner
+                      amount
+                      recipient
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    outboxes {
+      keys
+      entries(input: $outboxesInput) {
+        key
+        value {
+          nextHeightToSchedule
+          queue {
+            entries
+          }
+        }
+      }
+    }
+    outboxCounters
+    previousMessageBlocks {
+      keys
+      entries(input: $previousMessageBlocksInput) {
+        key
+        value
+      }
+    }
+    previousEventBlocks {
+      keys {
+        applicationId
+        streamName
+      }
+      entries(input: $previousEventBlocksInput) {
+        key {
+          applicationId
+          streamName
+        }
+        value
+      }
+    }
+  }
+}
+
+query Applications($chainId: ChainId!) {
+  applications(chainId: $chainId) {
+    id
+    link
+    description
+  }
+}
+
+query Block($hash: CryptoHash, $chainId: ChainId!) {
+  block(hash: $hash, chainId: $chainId) {
+    status
+    hash
+    block {
+      header {
+        chainId
+        epoch
+        height
+        timestamp
+        stateHash
+        previousBlockHash
+        authenticatedSigner
+        transactionsHash
+        messagesHash
+        previousMessageBlocksHash
+        previousEventBlocksHash
+        oracleResponsesHash
+        eventsHash
+        blobsHash
+        operationResultsHash
+      }
+      body {
+        messages {
+          destination
+          authenticatedSigner
+          grant
+          refundGrantTo
+          kind
+          message
+        }
+        previousMessageBlocks
+        previousEventBlocks
+        oracleResponses
+        events {
+          streamId {
+            applicationId
+            streamName
+          }
+          index
+          value
+        }
+        blobs
+        operationResults
+        transactionMetadata {
+          transactionType
+          incomingBundle {
+            origin
+            bundle {
+              height
+              timestamp
+              certificateHash
+              transactionIndex
+              messages {
+                authenticatedSigner
+                grant
+                refundGrantTo
+                kind
+                index
+                message
+                messageMetadata {
+                  messageType
+                  applicationId
+                  userBytesHex
+                  systemMessage {
+                    systemMessageType
+                    credit {
+                      target
+                      amount
+                      source
+                    }
+                    withdraw {
+                      owner
+                      amount
+                      recipient
+                    }
+                  }
+                }
+              }
+            }
+            action
+          }
+          operation {
+            operationType
+            applicationId
+            userBytesHex
+            systemOperation {
+              systemOperationType
+              transfer {
+                owner
+                recipient
+                amount
+              }
+              claim {
+                owner
+                targetId
+                recipient
+                amount
+              }
+              openChain {
+                balance
+                ownership {
+                  ownershipJson
+                }
+                applicationPermissions {
+                  permissionsJson
+                }
+              }
+              changeOwnership {
+                superOwners
+                owners {
+                  owner
+                  weight
+                }
+                multiLeaderRounds
+                openMultiLeaderRounds
+                timeoutConfig {
+                  fastRoundMs
+                  baseTimeoutMs
+                  timeoutIncrementMs
+                  fallbackDurationMs
+                }
+              }
+              changeApplicationPermissions {
+                permissions {
+                  permissionsJson
+                }
+              }
+              admin {
+                adminOperationType
+                epoch
+                blobHash
+              }
+              createApplication {
+                moduleId
+                parametersHex
+                instantiationArgumentHex
+                requiredApplicationIds
+              }
+              publishDataBlob {
+                blobHash
+              }
+              verifyBlob {
+                blobId
+              }
+              publishModule {
+                moduleId
+              }
+              epoch
+              updateStreams {
+                chainId
+                streamId
+                nextIndex
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+query Blocks($from: CryptoHash, $chainId: ChainId!, $limit: Int) {
+  blocks(from: $from, chainId: $chainId, limit: $limit) {
+    status
+    hash
+    block {
+      header {
+        chainId
+        epoch
+        height
+        timestamp
+        stateHash
+        previousBlockHash
+        authenticatedSigner
+        transactionsHash
+        messagesHash
+        previousMessageBlocksHash
+        previousEventBlocksHash
+        oracleResponsesHash
+        eventsHash
+        blobsHash
+        operationResultsHash
+      }
+      body {
+        messages {
+          destination
+          authenticatedSigner
+          grant
+          refundGrantTo
+          kind
+          message
+        }
+        previousMessageBlocks
+        previousEventBlocks
+        oracleResponses
+        events {
+          streamId {
+            applicationId
+            streamName
+          }
+          index
+          value
+        }
+        blobs
+        operationResults
+        transactionMetadata {
+          transactionType
+          incomingBundle {
+            origin
+            bundle {
+              height
+              timestamp
+              certificateHash
+              transactionIndex
+              messages {
+                authenticatedSigner
+                grant
+                refundGrantTo
+                kind
+                index
+                message
+                messageMetadata {
+                  messageType
+                  applicationId
+                  userBytesHex
+                  systemMessage {
+                    systemMessageType
+                    credit {
+                      target
+                      amount
+                      source
+                    }
+                    withdraw {
+                      owner
+                      amount
+                      recipient
+                    }
+                  }
+                }
+              }
+            }
+            action
+          }
+          operation {
+            operationType
+            applicationId
+            userBytesHex
+            systemOperation {
+              systemOperationType
+              transfer {
+                owner
+                recipient
+                amount
+              }
+              claim {
+                owner
+                targetId
+                recipient
+                amount
+              }
+              openChain {
+                balance
+                ownership {
+                  ownershipJson
+                }
+                applicationPermissions {
+                  permissionsJson
+                }
+              }
+              changeOwnership {
+                superOwners
+                owners {
+                  owner
+                  weight
+                }
+                multiLeaderRounds
+                openMultiLeaderRounds
+                timeoutConfig {
+                  fastRoundMs
+                  baseTimeoutMs
+                  timeoutIncrementMs
+                  fallbackDurationMs
+                }
+              }
+              changeApplicationPermissions {
+                permissions {
+                  permissionsJson
+                }
+              }
+              admin {
+                adminOperationType
+                epoch
+                blobHash
+              }
+              createApplication {
+                moduleId
+                parametersHex
+                instantiationArgumentHex
+                requiredApplicationIds
+              }
+              publishDataBlob {
+                blobHash
+              }
+              verifyBlob {
+                blobId
+              }
+              publishModule {
+                moduleId
+              }
+              epoch
+              updateStreams {
+                chainId
+                streamId
+                nextIndex
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+subscription Notifications($chainId: ChainId!) {
+  notifications(chainId: $chainId)
+}
+
+mutation Transfer($chainId: ChainId!, $owner: AccountOwner!, $recipient_chain: ChainId!, $recipient_account: AccountOwner!, $amount: Amount!) {
+  transfer(chainId: $chainId, owner: $owner, recipient: { chain_id: $recipient_chain, owner: $recipient_account }, amount: $amount)
+}
