@@ -64,6 +64,19 @@ from low to high levels in the dependency graph)
 
 * [`examples`](./examples) Examples of Linera applications written in Rust.
 
+### Featured Example: Supply Chain Management
+
+The [**Supply Chain Management**](./examples/supply-chain) example demonstrates a real-world enterprise application built on Linera, showcasing:
+- **Product tracking** with unique serial numbers across multi-party supply chains
+- **Custody transfers** between manufacturers, distributors, carriers, and retailers
+- **Cross-chain visibility** where each chain represents a different facility or location
+- **Tamper-proof audit trails** for compliance and verification
+- **Real-time updates** as products move through the supply chain
+
+This example illustrates how Linera's architecture enables scalable, transparent supply chain management with instant finality and cross-chain messaging. Perfect for understanding how to build enterprise-grade applications on Linera.
+
+See the [supply-chain README](./examples/supply-chain/README.md) for deployment instructions and GraphQL API documentation.
+
 ## Prerequisites
 
 See [`INSTALL.md`](./INSTALL.md) for software requirements to develop in this repo.
