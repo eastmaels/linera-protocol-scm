@@ -70,7 +70,7 @@ const REGISTER_PRODUCT = gql`
   mutation RegisterProduct(
     $manufacturer: AccountOwner!
     $name: String!
-    $blobHash: CryptoHash!
+    $blobHash: DataBlobHash!
   ) {
     registerProduct(manufacturer: $manufacturer, name: $name, blobHash: $blobHash)
   }
@@ -450,6 +450,9 @@ function App({ chainId, owner }) {
     const encoder = new TextEncoder();
     const byteArrayFile = encoder.encode(registerImageUrl);
 
+    // Ensure owner has 0x prefix
+    const formattedOwner = owner.startsWith('0x') ? owner : `0x${owner}`;
+
     publishDataBlob({
       variables: {
         chainId: chainId,
@@ -465,7 +468,7 @@ function App({ chainId, owner }) {
         const blobHash = r['data']['publishDataBlob'];
         registerProduct({
           variables: {
-            manufacturer: `${owner}`,
+            manufacturer: formattedOwner,
             name: productName,
             blobHash: blobHash,
           },
@@ -483,13 +486,17 @@ function App({ chainId, owner }) {
   };
 
   const handleTransferSubmit = () => {
+    // Ensure owner addresses have 0x prefix
+    const formattedSourceOwner = owner.startsWith('0x') ? owner : `0x${owner}`;
+    const formattedTargetOwner = targetOwner.startsWith('0x') ? targetOwner : `0x${targetOwner}`;
+
     transferCustody({
       variables: {
-        sourceOwner: `${owner}`,
+        sourceOwner: formattedSourceOwner,
         tokenId: tokenID,
         targetAccount: {
           chainId: targetChainID,
-          owner: `${targetOwner}`,
+          owner: formattedTargetOwner,
         },
       },
     }).then((r) => {
