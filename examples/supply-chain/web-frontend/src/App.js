@@ -243,11 +243,17 @@ function App({ chainId, owner }) {
   // Query owned products
   let [
     getOwnedProducts,
-    { data: ownedProductsData, called: ownedProductsCalled, loading: ownedProductsLoading },
+    { data: ownedProductsData, called: ownedProductsCalled, loading: ownedProductsLoading, error: ownedProductsError },
   ] = useLazyQuery(GET_OWNED_PRODUCTS, {
     client: appClient,
     fetchPolicy: 'network-only',
-    variables: { owner: `${owner}` },
+    variables: { owner: owner.startsWith('0x') ? owner : `0x${owner}` },
+    onCompleted: (data) => {
+      console.log('Query completed. Raw data:', data);
+    },
+    onError: (error) => {
+      console.error('Query error:', error);
+    },
   });
 
   // Query product history
@@ -273,6 +279,7 @@ function App({ chainId, owner }) {
     TRANSFER_CUSTODY,
     {
       client: appClient,
+      fetchPolicy: 'no-cache',
       onError: (error) => setTransferError('Transfer Error: ' + error.message),
       onCompleted: () => {
         handleTransferClose();
@@ -293,15 +300,20 @@ function App({ chainId, owner }) {
 
   const [registerProduct, { loading: registerLoading }] = useMutation(REGISTER_PRODUCT, {
     client: appClient,
+    fetchPolicy: 'no-cache',
     onError: (error) => setRegisterError('Register Error: ' + error.message),
     onCompleted: () => {
       handleRegisterClose();
-      getOwnedProducts();
+      // Wait a bit for the blockchain to process, then refresh
+      setTimeout(() => {
+        getOwnedProducts();
+      }, 1000);
     },
   });
 
   const [addCheckpoint, { loading: checkpointLoading }] = useMutation(ADD_CHECKPOINT, {
     client: appClient,
+    fetchPolicy: 'no-cache',
     onError: (error) => setCheckpointError('Checkpoint Error: ' + error.message),
     onCompleted: () => {
       handleCheckpointClose();
@@ -311,6 +323,7 @@ function App({ chainId, owner }) {
 
   const [updateStatus, { loading: statusLoading }] = useMutation(UPDATE_STATUS, {
     client: appClient,
+    fetchPolicy: 'no-cache',
     onError: (error) => setStatusError('Status Update Error: ' + error.message),
     onCompleted: () => {
       handleStatusClose();
@@ -320,6 +333,7 @@ function App({ chainId, owner }) {
 
   const [verifyProduct, { loading: verifyLoading }] = useMutation(VERIFY_PRODUCT, {
     client: appClient,
+    fetchPolicy: 'no-cache',
     onError: (error) => setVerifyError('Verify Error: ' + error.message),
     onCompleted: () => {
       handleVerifyClose();
@@ -329,6 +343,7 @@ function App({ chainId, owner }) {
 
   const [rejectProduct] = useMutation(REJECT_PRODUCT, {
     client: appClient,
+    fetchPolicy: 'no-cache',
     onError: (error) => setVerifyError('Reject Error: ' + error.message),
     onCompleted: () => {
       handleVerifyClose();
@@ -746,20 +761,23 @@ function App({ chainId, owner }) {
             columns={columns}
             loading={ownedProductsLoading}
             dataSource={
-              ownedProductsData
-                ? Object.entries(ownedProductsData.ownedProducts).map(
-                    ([token_id, product]) => {
-                      return {
-                        key: token_id,
-                        token_id: token_id,
-                        name: product.name,
-                        status: product.status,
-                        manufacturer: product.manufacturer,
-                        checkpoints: product.checkpoints,
-                        verifications: product.verifications,
-                      };
-                    }
-                  )
+              ownedProductsData && ownedProductsData.ownedProducts
+                ? (() => {
+                    console.log('Products data:', ownedProductsData.ownedProducts);
+                    return Object.entries(ownedProductsData.ownedProducts).map(
+                      ([token_id, product]) => {
+                        return {
+                          key: token_id,
+                          token_id: token_id,
+                          name: product.name,
+                          status: product.status,
+                          manufacturer: product.manufacturer,
+                          checkpoints: product.checkpoints,
+                          verifications: product.verifications,
+                        };
+                      }
+                    );
+                  })()
                 : []
             }
           />
@@ -817,6 +835,7 @@ function App({ chainId, owner }) {
                     onPreview={handleRegisterPreview}
                     onChange={handleUploadChange}
                     accept='image/*'
+                    beforeUpload={() => false}
                   >
                     {registerUploadedFileList.length >= 1 ? null : uploadButton}
                   </Upload>
