@@ -8,21 +8,31 @@ const { Header } = Layout;
 function Navigation() {
   const location = useLocation();
 
+  // Preserve query parameters when navigating
+  const queryString = location.search;
+
+  // Extract the base path (chain ID portion)
+  const pathParts = location.pathname.split('/');
+  const basePath = pathParts.length > 1 ? `/${pathParts[1]}` : '';
+
+  // Get the current page path (without chain ID)
+  const currentPage = pathParts.length > 2 ? `/${pathParts[2]}` : '/';
+
   const menuItems = [
     {
       key: '/',
       icon: <HomeOutlined />,
-      label: <Link to="/">Home</Link>,
+      label: <Link to={`${basePath}${queryString}`}>Home</Link>,
     },
     {
       key: '/browse',
       icon: <AppstoreOutlined />,
-      label: <Link to="/browse">Browse Products</Link>,
+      label: <Link to={`${basePath}/browse${queryString}`}>Browse Products</Link>,
     },
     {
       key: '/register',
       icon: <PlusCircleOutlined />,
-      label: <Link to="/register">Register Product</Link>,
+      label: <Link to={`${basePath}/register${queryString}`}>Register Product</Link>,
     },
   ];
 
@@ -34,7 +44,7 @@ function Navigation() {
       <Menu
         theme="dark"
         mode="horizontal"
-        selectedKeys={[location.pathname]}
+        selectedKeys={[currentPage]}
         items={menuItems}
         style={{ flex: 1, minWidth: 0 }}
       />
