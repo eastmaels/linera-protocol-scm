@@ -21,6 +21,7 @@ import {
   Timeline,
   Tag,
   Tabs,
+  Tooltip,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -29,6 +30,7 @@ import {
   SyncOutlined,
 } from '@ant-design/icons';
 import { useClient } from '../GraphQLProvider';
+import { useManufacturers } from '../context/ManufacturerContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -165,6 +167,7 @@ const getStatusIcon = (status) => {
 
 function BrowseProducts({ chainId, owner }) {
   const { appClient } = useClient();
+  const { getManufacturerName } = useManufacturers();
 
   // Errors
   const [transferError, setTransferError] = useState('');
@@ -534,7 +537,17 @@ function BrowseProducts({ chainId, owner }) {
       title: 'Manufacturer',
       dataIndex: 'manufacturer',
       key: 'manufacturer',
-      render: (text) => <Text code>{text.substring(0, 16)}...</Text>,
+      render: (address) => {
+        const manufacturerName = getManufacturerName(address);
+        if (manufacturerName) {
+          return (
+            <Tooltip title={<Text code>{address}</Text>}>
+              <Text strong>{manufacturerName}</Text>
+            </Tooltip>
+          );
+        }
+        return <Text code>{address.substring(0, 16)}...</Text>;
+      },
     },
     {
       title: 'Actions',

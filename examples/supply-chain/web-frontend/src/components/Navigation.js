@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Layout, Menu } from 'antd';
-import { HomeOutlined, AppstoreOutlined, PlusCircleOutlined } from '@ant-design/icons';
+import { HomeOutlined, AppstoreOutlined, PlusCircleOutlined, TeamOutlined } from '@ant-design/icons';
 
 const { Header } = Layout;
 
@@ -33,6 +33,11 @@ function Navigation() {
       key: '/register',
       icon: <PlusCircleOutlined />,
       label: <Link to={`${basePath}/register${queryString}`}>Register Product</Link>,
+    },
+    {
+      key: '/manufacturers',
+      icon: <TeamOutlined />,
+      label: <Link to={`${basePath}/manufacturers${queryString}`}>Manufacturers</Link>,
     },
   ];
 
