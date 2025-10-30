@@ -210,6 +210,28 @@ impl QueryRoot {
             .map(|p| p.verifications)
             .unwrap_or_else(Vec::new)
     }
+
+    async fn account_profile(&self, owner: AccountOwner) -> Option<supply_chain::AccountProfile> {
+        self.supply_chain
+            .account_profiles
+            .get(&owner)
+            .await
+            .unwrap()
+    }
+
+    async fn all_account_profiles(&self) -> Vec<supply_chain::AccountProfile> {
+        let mut profiles = Vec::new();
+        self.supply_chain
+            .account_profiles
+            .for_each_index_value(|_owner, profile| {
+                profiles.push(profile.into_owned());
+                Ok(())
+            })
+            .await
+            .unwrap();
+
+        profiles
+    }
 }
 
 struct MutationRoot {
@@ -267,6 +289,7 @@ impl MutationRoot {
         token_id: String,
         new_status: supply_chain::ProductStatus,
         location: String,
+        geo_location: Option<supply_chain::GeoLocation>,
         notes: Option<String>,
     ) -> [u8; 0] {
         let operation = Operation::UpdateStatus {
@@ -275,6 +298,7 @@ impl MutationRoot {
             },
             new_status,
             location,
+            geo_location,
             notes,
         };
         self.runtime.schedule_operation(&operation);
@@ -285,6 +309,7 @@ impl MutationRoot {
         &self,
         token_id: String,
         location: String,
+        geo_location: Option<supply_chain::GeoLocation>,
         status: supply_chain::ProductStatus,
         notes: Option<String>,
     ) -> [u8; 0] {
@@ -293,6 +318,7 @@ impl MutationRoot {
                 id: STANDARD_NO_PAD.decode(token_id).unwrap(),
             },
             location,
+            geo_location,
             status,
             notes,
         };
@@ -318,6 +344,29 @@ impl MutationRoot {
                 id: STANDARD_NO_PAD.decode(token_id).unwrap(),
             },
             reason,
+        };
+        self.runtime.schedule_operation(&operation);
+        []
+    }
+
+    async fn register_account_profile(
+        &self,
+        name: String,
+        company_name: Option<String>,
+        geo_location: Option<supply_chain::GeoLocation>,
+    ) -> [u8; 0] {
+        let operation = Operation::RegisterAccountProfile {
+            name,
+            company_name,
+            geo_location,
+        };
+        self.runtime.schedule_operation(&operation);
+        []
+    }
+
+    async fn update_account_location(&self, geo_location: supply_chain::GeoLocation) -> [u8; 0] {
+        let operation = Operation::UpdateAccountLocation {
+            geo_location,
         };
         self.runtime.schedule_operation(&operation);
         []

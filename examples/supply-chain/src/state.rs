@@ -8,7 +8,7 @@ use linera_sdk::{
     linera_base_types::AccountOwner,
     views::{linera_views, MapView, RegisterView, RootView, ViewStorageContext},
 };
-use supply_chain::{Product, TokenId};
+use supply_chain::{AccountProfile, Product, TokenId};
 
 /// The application state.
 #[derive(RootView, SimpleObject)]
@@ -20,4 +20,6 @@ pub struct SupplyChainState {
     pub owned_token_ids: MapView<AccountOwner, BTreeSet<TokenId>>,
     // Counter of products registered in this chain, used for hash uniqueness
     pub num_registered_products: RegisterView<u64>,
+    // Map from account owner to their profile (name, geolocation, etc.)
+    pub account_profiles: MapView<AccountOwner, AccountProfile>,
 }

@@ -98,6 +98,7 @@ impl Contract for SupplyChainContract {
                 token_id,
                 new_status,
                 location,
+                geo_location,
                 notes,
             } => {
                 let mut product = self.get_product(&token_id).await;
@@ -106,12 +107,13 @@ impl Contract for SupplyChainContract {
                 //     .check_account_permission(product.owner)
                 //     .expect("Permission for UpdateStatus operation");
 
-                self.update_product_status(&mut product, new_status, location, notes).await;
+                self.update_product_status(&mut product, new_status, location, geo_location, notes).await;
             }
 
             Operation::AddCheckpoint {
                 token_id,
                 location,
+                geo_location,
                 status,
                 notes,
             } => {
@@ -121,7 +123,7 @@ impl Contract for SupplyChainContract {
                 //     .check_account_permission(product.owner)
                 //     .expect("Permission for AddCheckpoint operation");
 
-                self.add_checkpoint(&mut product, location, status, notes).await;
+                self.add_checkpoint(&mut product, location, geo_location, status, notes).await;
             }
 
             Operation::VerifyProduct {
@@ -148,6 +150,26 @@ impl Contract for SupplyChainContract {
 
                 self.reject_product(&mut product, reason).await;
             }
+
+            Operation::RegisterAccountProfile {
+                name,
+                company_name,
+                geo_location,
+            } => {
+                let owner = self.runtime.authenticated_signer()
+                    .expect("Account profile registration must be authenticated");
+
+                self.register_account_profile(owner, name, company_name, geo_location).await;
+            }
+
+            Operation::UpdateAccountLocation {
+                geo_location,
+            } => {
+                let owner = self.runtime.authenticated_signer()
+                    .expect("Account location update must be authenticated");
+
+                self.update_account_location(owner, geo_location).await;
+            }
         }
     }
 
@@ -170,6 +192,7 @@ impl Contract for SupplyChainContract {
                     let delivery_checkpoint = Checkpoint {
                         timestamp: self.runtime.system_time(),
                         location: format!("Chain {}", self.runtime.chain_id()),
+                        geo_location: None,
                         status: ProductStatus::Delivered,
                         party: target_account.owner,
                         notes: Some("Delivered (cross-chain)".to_string()),
@@ -214,6 +237,7 @@ impl SupplyChainContract {
         let transfer_checkpoint = Checkpoint {
             timestamp: self.runtime.system_time(),
             location: format!("Chain {}", self.runtime.chain_id()),
+            geo_location: None,
             status: ProductStatus::InTransit,
             party: product.owner,
             notes: Some(format!("Transfer to {}", target_account.owner)),
@@ -228,6 +252,7 @@ impl SupplyChainContract {
             let delivery_checkpoint = Checkpoint {
                 timestamp: self.runtime.system_time(),
                 location: format!("Chain {}", self.runtime.chain_id()),
+                geo_location: None,
                 status: ProductStatus::Delivered,
                 party: target_account.owner,
                 notes: Some("Delivered (same chain)".to_string()),
@@ -276,6 +301,7 @@ impl SupplyChainContract {
         let initial_checkpoint = Checkpoint {
             timestamp: self.runtime.system_time(),
             location: format!("Chain {}", self.runtime.chain_id()),
+            geo_location: None,
             status: ProductStatus::Registered,
             party: owner,
             notes: Some("Product registered".to_string()),
@@ -362,6 +388,7 @@ impl SupplyChainContract {
         product: &mut Product,
         new_status: supply_chain::ProductStatus,
         location: String,
+        geo_location: Option<supply_chain::GeoLocation>,
         notes: Option<String>,
     ) {
         use supply_chain::Checkpoint;
@@ -371,6 +398,7 @@ impl SupplyChainContract {
         let checkpoint = Checkpoint {
             timestamp: self.runtime.system_time(),
             location,
+            geo_location,
             status: new_status,
             party: product.owner,
             notes,
@@ -389,6 +417,7 @@ impl SupplyChainContract {
         &mut self,
         product: &mut Product,
         location: String,
+        geo_location: Option<supply_chain::GeoLocation>,
         status: supply_chain::ProductStatus,
         notes: Option<String>,
     ) {
@@ -397,6 +426,7 @@ impl SupplyChainContract {
         let checkpoint = Checkpoint {
             timestamp: self.runtime.system_time(),
             location,
+            geo_location,
             status,
             party: product.owner,
             notes,
@@ -431,6 +461,7 @@ impl SupplyChainContract {
             let checkpoint = supply_chain::Checkpoint {
                 timestamp: self.runtime.system_time(),
                 location: format!("Chain {}", self.runtime.chain_id()),
+                geo_location: None,
                 status: ProductStatus::Verified,
                 party: product.owner,
                 notes: Some(format!("Verification passed: {}", details)),
@@ -443,6 +474,7 @@ impl SupplyChainContract {
             let checkpoint = supply_chain::Checkpoint {
                 timestamp: self.runtime.system_time(),
                 location: format!("Chain {}", self.runtime.chain_id()),
+                geo_location: None,
                 status: ProductStatus::Rejected,
                 party: product.owner,
                 notes: Some(format!("Verification failed: {}", details)),
@@ -466,6 +498,7 @@ impl SupplyChainContract {
         let checkpoint = Checkpoint {
             timestamp: self.runtime.system_time(),
             location: format!("Chain {}", self.runtime.chain_id()),
+            geo_location: None,
             status: ProductStatus::Rejected,
             party: product.owner,
             notes: Some(format!("Rejected: {}", reason)),
@@ -477,5 +510,50 @@ impl SupplyChainContract {
             .products
             .insert(&product.token_id, product.clone())
             .expect("Error updating product");
+    }
+
+    /// Registers or updates an account profile with geolocation
+    async fn register_account_profile(
+        &mut self,
+        owner: AccountOwner,
+        name: String,
+        company_name: Option<String>,
+        geo_location: Option<supply_chain::GeoLocation>,
+    ) {
+        use supply_chain::AccountProfile;
+
+        let profile = AccountProfile {
+            owner,
+            name,
+            company_name,
+            geo_location,
+            registration_timestamp: self.runtime.system_time(),
+        };
+
+        self.state
+            .account_profiles
+            .insert(&owner, profile)
+            .expect("Error inserting account profile");
+    }
+
+    /// Updates the geolocation for an account
+    async fn update_account_location(
+        &mut self,
+        owner: AccountOwner,
+        geo_location: supply_chain::GeoLocation,
+    ) {
+        let mut profile = self.state
+            .account_profiles
+            .get(&owner)
+            .await
+            .expect("Error getting account profile")
+            .expect("Account profile not found. Please register your account profile first.");
+
+        profile.geo_location = Some(geo_location);
+
+        self.state
+            .account_profiles
+            .insert(&owner, profile)
+            .expect("Error updating account location");
     }
 }

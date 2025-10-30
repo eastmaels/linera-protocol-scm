@@ -31,14 +31,27 @@ pub enum ProductStatus {
     Rejected,
 }
 
+/// Geographic coordinates for tracking locations
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, SimpleObject, InputObject)]
+#[graphql(input_name = "GeoLocationInput")]
+#[serde(rename_all = "camelCase")]
+pub struct GeoLocation {
+    /// Latitude coordinate (-90 to 90)
+    pub latitude: f64,
+    /// Longitude coordinate (-180 to 180)
+    pub longitude: f64,
+}
+
 /// A checkpoint records a status or location update for a product
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, SimpleObject)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SimpleObject)]
 #[serde(rename_all = "camelCase")]
 pub struct Checkpoint {
     /// When this checkpoint was created
     pub timestamp: Timestamp,
     /// Location or facility name
     pub location: String,
+    /// Geographic coordinates (optional)
+    pub geo_location: Option<GeoLocation>,
     /// Product status at this checkpoint
     pub status: ProductStatus,
     /// Party who created this checkpoint
@@ -59,6 +72,22 @@ pub struct VerificationRecord {
     pub passed: bool,
     /// Verification details or notes
     pub details: String,
+}
+
+/// Profile information for an account (manufacturer/supplier)
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SimpleObject)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountProfile {
+    /// Account owner address
+    pub owner: AccountOwner,
+    /// Display name for the account
+    pub name: String,
+    /// Company or organization name (optional)
+    pub company_name: Option<String>,
+    /// Geographic location (optional)
+    pub geo_location: Option<GeoLocation>,
+    /// When this profile was registered
+    pub registration_timestamp: Timestamp,
 }
 
 #[derive(
@@ -108,12 +137,14 @@ pub enum Operation {
         token_id: TokenId,
         new_status: ProductStatus,
         location: String,
+        geo_location: Option<GeoLocation>,
         notes: Option<String>,
     },
     /// Adds a checkpoint for tracking product location/status
     AddCheckpoint {
         token_id: TokenId,
         location: String,
+        geo_location: Option<GeoLocation>,
         status: ProductStatus,
         notes: Option<String>,
     },
@@ -127,6 +158,16 @@ pub enum Operation {
     RejectProduct {
         token_id: TokenId,
         reason: String,
+    },
+    /// Register or update account profile with geolocation
+    RegisterAccountProfile {
+        name: String,
+        company_name: Option<String>,
+        geo_location: Option<GeoLocation>,
+    },
+    /// Update account geolocation
+    UpdateAccountLocation {
+        geo_location: GeoLocation,
     },
 }
 
@@ -148,7 +189,7 @@ pub enum Message {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, SimpleObject, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, SimpleObject, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Product {
     pub token_id: TokenId,
@@ -164,7 +205,7 @@ pub struct Product {
     pub verifications: Vec<VerificationRecord>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, SimpleObject, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, SimpleObject, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductOutput {
     pub token_id: String,
