@@ -1,80 +1,241 @@
-# Getting Started with the Non Fungible App
+# Supply Chain Management Web Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A React-based web interface for the Linera Supply Chain Management application.
 
-The application (contract/service) must be deployed on the network, and a Node Service must be running
-on port 8080.
+## Features
 
-Web UIs for specific accounts can be opened by navigating URLs of the form
-`http://localhost:3000/$CHAIN?app=$APP_ID&owner=$OWNER&port=$PORT` where
-- the path is the ID of the chain where the account is located.
-- the argument `app` is the token application ID obtained when creating the token.
-- `owner` is the address of the chosen user account (owner must be have permissions to create blocks in the given chain).
-- `port` is the port of the wallet service (the wallet must know the secret key of `owner`).
+- **Product Registration**: Register new products in the supply chain with images/documents
+- **Checkpoint Tracking**: Add location-based checkpoints as products move through the supply chain
+- **Status Updates**: Update product status (Registered, InTransit, Delivered, Verified, Rejected)
+- **Product Verification**: Quality assurance checkpoints with pass/fail verification
+- **Custody Transfers**: Transfer product ownership between parties and facilities (chains)
+- **Real-time Updates**: Automatic updates via GraphQL subscriptions
+- **History Timeline**: Visual timeline of all checkpoints and verifications
+- **Multi-tab Product Details**: Overview, checkpoint history, and verification records
 
-## Available Scripts
+## Prerequisites
 
-In the project directory, you can run:
+- Node.js 14+ and npm
+- Running Linera service with supply-chain application deployed
+- Chain ID and owner address
 
-### `npm start`
+## Local Development
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Install Dependencies
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+```bash
+cd examples/supply-chain/web-frontend
+npm install
+```
 
-### `npm test`
+### Start Development Server
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```bash
+npm start
+```
 
-### `npm run build`
+The application will open at `http://localhost:3000`.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Access the Application
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Navigate to:
+```
+http://localhost:3000/<CHAIN_ID>?app=<APP_ID>&owner=<OWNER>&port=<PORT>
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Example:
+```
+http://localhost:3000/802375eabe210e4683c9334780f522d3bcc872e56feec369fab3b47349e365ec?app=0b97e3f21bf2f629c8fb371ada50231a08ab5a32481aed1c5c126cd9461a4705&owner=4799c8fdbbc55497ad3aadf1a31a9e54273c4110af12a0840d0abb5d63c62b23&port=8080
+```
 
-### `npm run eject`
+## Building for Production
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+npm run build
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+This creates an optimized production build in the `build/` directory.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Deploying to Vercel
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### Prerequisites
 
-## Learn More
+1. Install Vercel CLI:
+```bash
+npm install -g vercel
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+2. Login to Vercel:
+```bash
+vercel login
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Deploy
 
-### Code Splitting
+#### Option 1: Deploy via CLI
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+From the `web-frontend` directory:
 
-### Analyzing the Bundle Size
+```bash
+# Deploy to preview
+vercel
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+# Deploy to production
+vercel --prod
+```
 
-### Making a Progressive Web App
+#### Option 2: Deploy via GitHub
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+1. Push your code to GitHub
+2. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+3. Click "Add New Project"
+4. Import your GitHub repository
+5. Configure the project:
+   - **Framework Preset**: Create React App
+   - **Root Directory**: `examples/supply-chain/web-frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `build`
+6. Click "Deploy"
 
-### Advanced Configuration
+### Environment Variables
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+No environment variables are required at build time. The application accepts runtime parameters via URL:
 
-### Deployment
+- `chainId`: The chain ID (required, from URL path)
+- `app`: The application ID (required, query parameter)
+- `owner`: The owner address (required, query parameter)
+- `port`: The Linera service port (optional, defaults to 8080)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### Access Your Deployed App
 
-### `npm run build` fails to minify
+After deployment, access your app at:
+```
+https://your-app.vercel.app/<CHAIN_ID>?app=<APP_ID>&owner=<OWNER>&port=<PORT>
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Configuration
+
+### Connecting to a Different Linera Service
+
+By default, the app connects to `localhost:8080`. To connect to a different service:
+
+1. **For local development**: Modify `src/GraphQLProvider.js` to change the endpoint
+2. **For deployed app**: Pass the `port` query parameter in the URL
+
+### GraphQL Endpoint
+
+The application connects to:
+- Node Service (for data blob publishing): `http://localhost:{PORT}/`
+- Application Service (for supply chain operations): `http://localhost:{PORT}/chains/{CHAIN_ID}/applications/{APP_ID}`
+
+## Features Documentation
+
+### Register Product
+- Upload product image/document
+- Enter product name (e.g., "iPhone 15 Pro - Serial#ABC123")
+- Automatically creates initial checkpoint with "Registered" status
+
+### Add Checkpoint
+- Record product location updates
+- Add status changes (InTransit, Delivered, etc.)
+- Include optional notes about the checkpoint
+
+### Update Status
+- Change product status with location context
+- Automatically adds checkpoint to history
+
+### Verify Product
+- Quality assurance checkpoints
+- Pass/Fail verification
+- Detailed verification notes
+- Creates verification record and checkpoint
+
+### Transfer Custody
+- Transfer between parties on same chain
+- Transfer between different chains (facilities)
+- Automatically adds InTransit and Delivered checkpoints
+
+### View Product Details
+- **Overview Tab**: Product information and current status
+- **Checkpoint History Tab**: Timeline of all location/status updates
+- **Verification Records Tab**: All quality assurance records
+
+## Troubleshooting
+
+### Cannot Connect to Linera Service
+
+Make sure:
+1. The Linera service is running (`linera service --port 8080`)
+2. The correct port is specified in the URL
+3. CORS is properly configured (Linera service allows cross-origin requests)
+
+### Products Not Showing
+
+Verify:
+1. The owner address is correct
+2. Products have been registered on the specified chain
+3. The application ID is correct
+
+### GraphQL Errors
+
+Check:
+1. The application is properly deployed on the chain
+2. The GraphQL schema matches the backend implementation
+3. Browser console for detailed error messages
+
+## Technology Stack
+
+- **React**: UI framework
+- **Apollo Client**: GraphQL client
+- **Ant Design**: UI component library
+- **GraphQL**: API query language
+- **Vercel**: Hosting platform
+
+## Development
+
+### Project Structure
+
+```
+web-frontend/
+├── public/
+│   ├── index.html
+│   └── favicon.ico
+├── src/
+│   ├── App.js              # Main application component
+│   ├── GraphQLProvider.js   # GraphQL client configuration
+│   ├── index.js            # Entry point
+│   ├── App.css             # Styles
+│   └── index.css           # Global styles
+├── package.json
+├── vercel.json             # Vercel configuration
+└── README.md
+```
+
+### Available Scripts
+
+#### `npm start`
+
+Runs the app in the development mode. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+
+The page will reload when you make changes. You may also see any lint errors in the console.
+
+#### `npm test`
+
+Launches the test runner in the interactive watch mode.
+
+#### `npm run build`
+
+Builds the app for production to the `build` folder. It correctly bundles React in production mode and optimizes the build for the best performance.
+
+The build is minified and the filenames include the hashes.
+
+### Adding New Features
+
+1. Add GraphQL queries/mutations in `App.js`
+2. Create mutation hooks with Apollo Client
+3. Add UI components using Ant Design
+4. Update modals and forms as needed
+
+## License
+
+Apache-2.0
