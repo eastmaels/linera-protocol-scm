@@ -17,7 +17,7 @@ root.render(
   <React.StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path=":id" element={<GraphQLApp />} />
+        <Route path=":id/*" element={<GraphQLApp />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
